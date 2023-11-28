@@ -1,3 +1,4 @@
+# pip install pycryptodome
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Random import get_random_bytes
@@ -58,12 +59,13 @@ def create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algor
     output_message.write(signed_data)
     output_key.write(encrypt_session_key)
 
-create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algorithm)
+# create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algorithm)
 
 message = "tmp/messages/message"
 public_key_remet = "tmp/public/public_key_bob.pem"
+private_key_dest = "tmp/secret/alice/private_key_alice.pem"
 
-def open_envelope(message, public_key_remet):
+def open_envelope(message, public_key_remet, private_key_dest, encryp_algorithm):
     signed_data = open(message, 'rb').read()
     data, signature = signed_data.rsplit(b'\n', 1)
     key = RSA.import_key(open(public_key_remet).read())
@@ -71,9 +73,46 @@ def open_envelope(message, public_key_remet):
     try:
         pkcs1_15.new(key).verify(h, signature)
         print("Assinatura válida.")
-        return True
+        valid = True
     except (ValueError, TypeError):
         print("Assinatura inválida.")
-        return False
+        valid = False
+    if valid:
+        encrypted_session_key = open("./tmp/messages/key", "rb").read()
+        private_key = RSA.import_key(open(private_key_dest).read())
+        cipher_rsa = PKCS1_OAEP.new(private_key)
+        session_key = cipher_rsa.decrypt(encrypted_session_key)
+        if encryp_algorithm == "aes":
+            print("AES")
+            cipher = AES.new(session_key, AES.MODE_EAX)
+        elif encryp_algorithm == "des":
+            print("DES")
+            cipher = DES.new(session_key, DES.MODE_ECB)
+        elif encryp_algorithm == "rc4":
+            print("RC4")
+            cipher = ARC4.new(session_key)
+        else:
+            print("Algoritmo inválido.")
+            return
+        plain_text = cipher.decrypt(data)
+        print("Mensagem descriptografada:")
+        print(cipher )
+        # print(plain_text.decode("utf-8"))
 
-open_envelope(message, public_key_remet)
+open_envelope(message, public_key_remet, private_key_dest, encryp_algorithm)
+
+
+# def open_envelope(message, public_key_remet):
+#     signed_data = open(message, 'rb').read()
+#     data, signature = signed_data.rsplit(b'\n', 1)
+#     key = RSA.import_key(open(public_key_remet).read())
+#     h = SHA256.new(data)
+#     try:
+#         pkcs1_15.new(key).verify(h, signature)
+#         print("Assinatura válida.")
+#         return True
+#     except (ValueError, TypeError):
+#         print("Assinatura inválida.")
+#         return False
+
+# open_envelope(message, public_key_remet)
