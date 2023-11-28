@@ -5,6 +5,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import DES
 from Crypto.Cipher import ARC4
 from Crypto.Hash import SHA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 import os
 
 # Basic input infos
@@ -41,6 +43,10 @@ def create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algor
     cipher            = AES.new(session_key, AES.MODE_EAX)
     encrypted_message = cipher.encrypt(plain_text)
 
+    private_key = RSA.import_key(open(private_key_remet).read())
+    h = SHA256.new(encrypted_message)
+    signature = pkcs1_15.new(private_key).sign(h)
+
     instantiate_dest_public_key = RSA.import_key(open(public_key_dest).read())
     cipher_rsa                  = PKCS1_OAEP.new(instantiate_dest_public_key)
     encrypt_session_key         = cipher_rsa.encrypt(session_key)
@@ -48,7 +54,7 @@ def create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algor
     output_message = open("./tmp/messages/message", "wb")
     output_key     = open("./tmp/messages/key", "wb")
 
-    output_message.write(encrypted_message)
+    output_message.write(signature)
     output_key.write(encrypt_session_key)
 
 create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algorithm)
