@@ -44,8 +44,9 @@ def create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algor
     encrypted_message = cipher.encrypt(plain_text)
 
     private_key = RSA.import_key(open(private_key_remet).read())
+    h = SHA256.new(encrypted_message)
+    signature = pkcs1_15.new(private_key).sign(h)
 
-    
     instantiate_dest_public_key = RSA.import_key(open(public_key_dest).read())
     cipher_rsa                  = PKCS1_OAEP.new(instantiate_dest_public_key)
     encrypt_session_key         = cipher_rsa.encrypt(session_key)
@@ -53,29 +54,19 @@ def create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algor
     output_message = open("./tmp/messages/message", "wb")
     output_key     = open("./tmp/messages/key", "wb")
 
-    output_message.write(encrypted_message)
+    signed_data = encrypted_message + b'\n' + signature
+    output_message.write(signed_data)
     output_key.write(encrypt_session_key)
 
-    output_message.close()
-    output_key.close()
-    print(encrypted_message)
-    h = SHA256.new(open("./tmp/messages/message", "rb").read())
-    signature = pkcs1_15.new(private_key).sign(h)
-    print(signature)
-    open('./tmp/messages/signature', 'wb').write(signature)
-    
 create_envelope(plain_text, public_key_dest, private_key_remet, encryp_algorithm)
 
 message = "tmp/messages/message"
-signature_path = "tmp/messages/signature"
 public_key_remet = "tmp/public/public_key_bob.pem"
 
 def open_envelope(message, public_key_remet):
-    data = open(message, 'rb').read()
-    print(data)
+    signed_data = open(message, 'rb').read()
+    data, signature = signed_data.rsplit(b'\n', 1)
     key = RSA.import_key(open(public_key_remet).read())
-    signature = open(signature_path, 'rb').read()
-    print(signature)
     h = SHA256.new(data)
     try:
         pkcs1_15.new(key).verify(h, signature)
