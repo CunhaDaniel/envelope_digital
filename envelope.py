@@ -58,20 +58,40 @@ def create_users_keys(user):
 def create_envelope(path_plain_text, private_key_remet, encryp_algorithm, user_dest):
     data_plain_text = open(path_plain_text, "r").read().encode('utf-8')
     public_key_dest = f"./tmp/public/public_key_{user_dest}.pem"
+       # Escolha do tamanho da chave
+    valid_key_sizes_aes = [128, 192, 256]
+    valid_key_sizes_des = [64]
+    valid_key_sizes_rc4 = list(range(40, 2049, 8))
+    
     if (encryp_algorithm == 'AES'):
-        session_key = get_random_bytes(16)
+        print("Escolha o tamanho da chave para AES (em bits):", valid_key_sizes_aes)
+        key_size = int(input())
+        if key_size not in valid_key_sizes_aes:
+            print("Tamanho de chave inválido para AES. Usando tamanho padrão (128 bits).")
+            key_size = 128
+        session_key = get_random_bytes(key_size // 8)
 
         cipher_aes = AES.new(session_key, AES.MODE_ECB)
         padded_message = pad(data_plain_text, AES.block_size)
         encrypted_message = cipher_aes.encrypt(padded_message)
     elif (encryp_algorithm == 'DES'):
-        session_key = get_random_bytes(8)
+        print("Escolha o tamanho da chave para DES (em bits):", valid_key_sizes_des)
+        key_size = int(input())
+        if key_size not in valid_key_sizes_des:
+            print("Tamanho de chave inválido para DES. Usando tamanho padrão (56 bits).")
+            key_size = 64
+        session_key = get_random_bytes(key_size // 8)
 
         cipher = DES.new(session_key, DES.MODE_ECB)
         padded_message = pad(data_plain_text, DES.block_size)
         encrypted_message = cipher.encrypt(padded_message)
     elif (encryp_algorithm == 'RC4'):
-        session_key = get_random_bytes(16)
+        print("Escolha o tamanho da chave para RSA (em bits) [40,48,..., 2048]: " )
+        key_size = int(input())
+        if key_size not in valid_key_sizes_rc4:
+            print("Tamanho de chave inválido para RSA. Usando tamanho padrão (2048 bits).")
+            key_size = 2048
+        session_key = get_random_bytes(key_size // 8)
 
         cipher = ARC4.new(session_key)
         encrypted_message = cipher.encrypt(data_plain_text)
@@ -92,9 +112,14 @@ def create_envelope(path_plain_text, private_key_remet, encryp_algorithm, user_d
     output_folder_remet = os.path.join(output_folder_dest, f"{user_remet}/")
     # output_folder_remet = os.path.join(output_folder_dest, f"{user_remet}_.{encryp_algorithm}/")
     os.makedirs(output_folder_remet, exist_ok=True)
+    
+    # Criar subpasta com o nome do arquivo
+    output_folder_path = os.path.join(output_folder_remet, f"{path_plain_text}/")
+    # output_folder_remet = os.path.join(output_folder_dest, f"{user_remet}_.{encryp_algorithm}/")
+    os.makedirs(output_folder_path, exist_ok=True)
 
-    output_message = open(os.path.join(output_folder_remet, "message"), "wb")
-    output_key = open(os.path.join(output_folder_remet, "key"), "wb")
+    output_message = open(os.path.join(output_folder_path, "message"), "wb")
+    output_key = open(os.path.join(output_folder_path, "key"), "wb")
 
     signed_data = encrypted_message + b'space' + signature
     output_message.write(signed_data)
@@ -102,10 +127,10 @@ def create_envelope(path_plain_text, private_key_remet, encryp_algorithm, user_d
 
 
 
-def open_envelope( user_remet, user_dest,  encryp_algorithm):
+def open_envelope( user_remet, user_dest,path_arq):
     
-    message = f"tmp/messages/{user_dest}/{user_remet}/message" # vai ser com base no destinatario e Remetente
-    session_key = f"tmp/messages/{user_dest}/{user_remet}/key" # vai ser com base no destinatario e Remetente   
+    message = f"tmp/messages/{user_dest}/{user_remet}/{path_arq}/message" # vai ser com base no destinatario e Remetente
+    session_key = f"tmp/messages/{user_dest}/{user_remet}/{path_arq}/key" # vai ser com base no destinatario e Remetente   
     public_key_remet = f"./tmp/public/public_key_{user_remet}.pem"
     private_key_dest = f"./tmp/secret/{user_dest}/private_key_{user_dest}.pem"
     
@@ -126,15 +151,40 @@ def open_envelope( user_remet, user_dest,  encryp_algorithm):
         session_key         = cipher_rsa.decrypt(open(session_key, 'rb').read())
     
         print("Resolvendo texto...")
-        if (encryp_algorithm == 'AES'):
-            cipher    = AES.new(session_key, AES.MODE_ECB)
-            plaintext = unpad(cipher.decrypt(data), AES.block_size)
-        elif (encryp_algorithm == 'DES'):
-            cipher    = DES.new(session_key, DES.MODE_ECB)
-            plaintext = unpad(cipher.decrypt(data), DES.block_size)
-        elif (encryp_algorithm == 'RC4'):
-            cipher    = ARC4.new(session_key)
-            plaintext = cipher.decrypt(data)
+        # if (encryp_algorithm == 'AES'):
+        #     cipher    = AES.new(session_key, AES.MODE_ECB)
+        #     plaintext = unpad(cipher.decrypt(data), AES.block_size)
+        # elif (encryp_algorithm == 'DES'):
+        #     cipher    = DES.new(session_key, DES.MODE_ECB)
+        #     plaintext = unpad(cipher.decrypt(data), DES.block_size)
+        # elif (encryp_algorithm == 'RC4'):
+        #     cipher    = ARC4.new(session_key)
+        #     plaintext = cipher.decrypt(data)
+        algorithms = ['AES', 'DES', 'RC4']
+
+        # Loop for para tentar cada algoritmo
+        
+        for algorithm in algorithms:
+            #testando as 3 opções
+            try:
+                # Criar o objeto cipher de acordo com o algoritmo
+                if algorithm == 'AES':
+                    cipher = AES.new(session_key, AES.MODE_ECB)
+                   
+                elif algorithm == 'DES':
+                    cipher = DES.new(session_key, DES.MODE_ECB)
+                    
+                elif algorithm == 'RC4':
+                    cipher = ARC4.new(session_key)
+                    
+                # Descriptografar os dados e remover o padding
+                plaintext = unpad(cipher.decrypt(data), cipher.block_size)
+                
+                # Imprimir o plaintext
+                print(f"Plaintext encontrado: {plaintext}")
+            except:
+                # Se ocorrer um erro, imprimir uma mensagem de erro
+                print("...")
 
         print(plaintext.decode("utf-8"))
     except:
@@ -157,8 +207,11 @@ while True:
         create_users_keys(user)
         print(f"Chave de usuário criada para {user}")
     elif choice == '2':
-        path_plain_text = input("Digite o caminho do arquivo de texto: ")
-
+        path_plain_text = ""
+        while not os.path.exists(path_plain_text):
+            path_plain_text = input("Digite o caminho do arquivo de texto: ")
+            if not os.path.exists(path_plain_text):
+                print("Arquivo nao encontrado! ")
         # Input for public key destination
         user_dest = input("Digite o nome do destinatário (Ex: alice): ")
         public_key_dest = f"./tmp/public/public_key_{user_dest}.pem"
@@ -216,9 +269,23 @@ while True:
         else:
             print(f"A pasta {path_dest} não existe.")
         
-        user_remet = input("Digite o nome de um remetente valido " )       
-        encryp_algorithm = validate_encryp_algorithm() 
-        open_envelope( user_remet, user_dest,  encryp_algorithm)
+        user_remet = input("Digite o nome de um remetente valido " )    
+        path_remet = f"./tmp/messages/{user_dest}/{user_remet}"
+         # Se a pasta path_ do arquivo existir, quero que liste os nomes das pastas dentro dela
+        if os.path.exists(path_remet):
+            print(f"Listando pastas dentro de {path_remet}:")
+            subfolders = [f.path for f in os.scandir(path_remet) if f.is_dir()]
+            if subfolders:
+                for folder in subfolders:
+                    print(os.path.basename(folder))
+            else:
+                print("Nenhuma pasta encontrada dentro de", path_dest)
+        else:
+            print(f"A pasta {path_remet} não existe.")
+        
+        path_arq = input("Digite o nome de um arquivo valido " )      
+        # encryp_algorithm = validate_encryp_algorithm() 
+        open_envelope( user_remet, user_dest , path_arq )
     elif choice == '4':
         print("Saindo do programa. Até logo!")
         exit()
