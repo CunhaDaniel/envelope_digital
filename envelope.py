@@ -10,18 +10,26 @@ from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 import os
 
-# Basic input infos
-path_plain_text   = "message.txt" #input("Digite o caminho do arquivo em claro: ")
-public_key_dest   = "./tmp/public/public_key_alice.pem" #input("Digite o caminho da chave pública do destinatário: ")
-private_key_remet = "./tmp/secret/bob/private_key_bob.pem" #input("Digite o caminho da chave privada do remetente: ")
-encryp_algorithm  = "RC4" #input("Digite o algoritmo disponíveis: [AES|DES|RC4]: ") # TODO: dizer tamanho da chave
+# # Basic input infos
+# path_plain_text   = "message.txt" #input("Digite o caminho do arquivo em claro: ")
+# public_key_dest   = "./tmp/public/public_key_alice.pem" #input("Digite o caminho da chave pública do destinatário: ")
+# private_key_remet = "./tmp/secret/bob/private_key_bob.pem" #input("Digite o caminho da chave privada do remetente: ")
+# encryp_algorithm  = "RC4" #input("Digite o algoritmo disponíveis: [AES|DES|RC4]: ") # TODO: dizer tamanho da chave
 
-# This method create a user keys
-# @param[string] <user> represents who that keys will belongs
-# this method creates two files
-# private_key with path: ./tmp/secret/<user>/private_key_<user>.pem
-# public_key  with path: ./tmp/public/public_key_<user>.pem
-def create_users_keys(user="daniel"):
+def validate_encryp_algorithm():
+            # Input for encryption algorithm
+    encryption_algorithms = ["AES", "DES", "RC4"]
+    print("Opções de algoritmo de criptografia: ", encryption_algorithms)
+    encryp_algorithm = input("Digite o algoritmo desejado: ")
+
+    # Ensure the chosen encryption algorithm is valid
+    while encryp_algorithm not in encryption_algorithms:
+        print("Algoritmo inválido. Escolha entre ", encryption_algorithms)
+        encryp_algorithm = input("Digite o algoritmo desejado: ")
+    return encryp_algorithm
+
+# Teste
+def create_users_keys(user):
     user = user.lower()
     # Create and export private key
     key         = RSA.generate(2048)
@@ -37,50 +45,70 @@ def create_users_keys(user="daniel"):
     file_key.write(private_key)
     file_key.close()
 
-def create_envelope(path_plain_text, public_key_dest, private_key_remet, encryp_algorithm):
+
+# Basic input infos
+
+
+# This method create a user keys
+# @param[string] <user> represents who that keys will belongs
+# this method creates two files
+# private_key with path: ./tmp/secret/<user>/private_key_<user>.pem
+# public_key  with path: ./tmp/public/public_key_<user>.pem
+
+def create_envelope(path_plain_text, private_key_remet, encryp_algorithm, user_dest):
     data_plain_text = open(path_plain_text, "r").read().encode('utf-8')
-
+    public_key_dest = f"./tmp/public/public_key_{user_dest}.pem"
     if (encryp_algorithm == 'AES'):
-        session_key     = get_random_bytes(16)
+        session_key = get_random_bytes(16)
 
-        cipher_aes        = AES.new(session_key, AES.MODE_ECB)
-        padded_message    = pad(data_plain_text, AES.block_size)
+        cipher_aes = AES.new(session_key, AES.MODE_ECB)
+        padded_message = pad(data_plain_text, AES.block_size)
         encrypted_message = cipher_aes.encrypt(padded_message)
     elif (encryp_algorithm == 'DES'):
         session_key = get_random_bytes(8)
 
-        cipher            = DES.new(session_key, DES.MODE_ECB)
-        padded_message    = pad(data_plain_text, DES.block_size)
+        cipher = DES.new(session_key, DES.MODE_ECB)
+        padded_message = pad(data_plain_text, DES.block_size)
         encrypted_message = cipher.encrypt(padded_message)
     elif (encryp_algorithm == 'RC4'):
         session_key = get_random_bytes(16)
-     
-        cipher            = ARC4.new(session_key)
+
+        cipher = ARC4.new(session_key)
         encrypted_message = cipher.encrypt(data_plain_text)
 
     instantiate_dest_public_key = RSA.import_key(open(public_key_dest).read())
-    cipher_rsa                  = PKCS1_OAEP.new(instantiate_dest_public_key)
-    encrypt_session_key         = cipher_rsa.encrypt(session_key)
+    cipher_rsa = PKCS1_OAEP.new(instantiate_dest_public_key)
+    encrypt_session_key = cipher_rsa.encrypt(session_key)
 
     private_key = RSA.import_key(open(private_key_remet).read())
-    hash_sign   = SHA256.new(encrypted_message)
-    signature   = pkcs1_15.new(private_key).sign(hash_sign)
+    hash_sign = SHA256.new(encrypted_message)
+    signature = pkcs1_15.new(private_key).sign(hash_sign)
 
-    output_message = open("./tmp/messages/message", "wb")
-    output_key     = open("./tmp/messages/key", "wb")
+       # Criar pasta do destinatário
+    output_folder_dest = f"./tmp/messages/{user_dest}/"
+    os.makedirs(output_folder_dest, exist_ok=True)
+
+    # Criar subpasta com o nome do remetente
+    output_folder_remet = os.path.join(output_folder_dest, f"{user_remet}/")
+    # output_folder_remet = os.path.join(output_folder_dest, f"{user_remet}_.{encryp_algorithm}/")
+    os.makedirs(output_folder_remet, exist_ok=True)
+
+    output_message = open(os.path.join(output_folder_remet, "message"), "wb")
+    output_key = open(os.path.join(output_folder_remet, "key"), "wb")
 
     signed_data = encrypted_message + b'space' + signature
     output_message.write(signed_data)
     output_key.write(encrypt_session_key)
 
-create_envelope(path_plain_text, public_key_dest, private_key_remet, encryp_algorithm)
 
-message = "tmp/messages/message"
-public_key_remet = "tmp/public/public_key_bob.pem"
-private_key_dest = "tmp/secret/alice/private_key_alice.pem"
-session_key = "tmp/messages/key"
 
-def open_envelope(message, public_key_remet, private_key_dest, session_key, encryp_algorithm):
+def open_envelope( user_remet, user_dest,  encryp_algorithm):
+    
+    message = f"tmp/messages/{user_dest}/{user_remet}/message" # vai ser com base no destinatario e Remetente
+    session_key = f"tmp/messages/{user_dest}/{user_remet}/key" # vai ser com base no destinatario e Remetente   
+    public_key_remet = f"./tmp/public/public_key_{user_remet}.pem"
+    private_key_dest = f"./tmp/secret/{user_dest}/private_key_{user_dest}.pem"
+    
     signed_data = open(message, 'rb').read()
     data        = signed_data.rsplit(b'space')[0]
     signature   = signed_data.rsplit(b'space')[1]
@@ -112,4 +140,88 @@ def open_envelope(message, public_key_remet, private_key_dest, session_key, encr
     except:
         print("Assinatura inválida.")
 
-open_envelope(message, public_key_remet, private_key_dest, session_key, encryp_algorithm)
+# open_envelope(message, public_key_remet, private_key_dest, session_key, encryp_algorithm)
+
+while True:
+    print("\nMenu:")
+    print("1. Criar chave de usuário")
+    print("2. Enviar envelope")
+    print("3. Abrir envelope")
+    print("4. Sair do programa")
+
+    choice = input("Escolha uma opção (1/2/3/4): ")
+
+    if choice == '1':
+        # Opção para criar chave de usuário
+        user = input("Digite o nome do usuário: ")
+        create_users_keys(user)
+        print(f"Chave de usuário criada para {user}")
+    elif choice == '2':
+        path_plain_text = input("Digite o caminho do arquivo de texto: ")
+
+        # Input for public key destination
+        user_dest = input("Digite o nome do destinatário (Ex: alice): ")
+        public_key_dest = f"./tmp/public/public_key_{user_dest}.pem"
+
+        # Create a new key pair if the user's public key does not exist
+
+        while not os.path.exists(public_key_dest):
+            print("Usuário não encontrado.")
+            choice = input("Deseja tentar novamente (digite 'sim') ou sair do programa (digite 'sair')? ").lower()
+
+            if choice == 'sair':
+                exit()
+            elif choice != 'sim':
+                print("Opção inválida. Saindo do programa.")
+                exit()
+
+            # Se o usuário optar por tentar novamente, solicite o nome do destinatário novamente
+            user_dest = input("Digite o nome do destinatário (Ex: alice): ")
+            public_key_dest = f"./tmp/public/public_key_{user_dest}.pem"
+
+        # Input for private key sender
+        user_remet = input("Digite o nome do remetente (Ex: bob): ")
+        private_key_remet = f"./tmp/secret/{user_remet}/private_key_{user_remet}.pem"
+
+        # Create a new key pair if the user's private key does not exist
+        if not os.path.exists(private_key_remet):
+            create_new_key = input("Deseja criar um Chave para esse usuario ?[sim | nao]")
+            if create_new_key == "sim":
+                create_users_keys(user_remet)
+            else:
+                print("Saindo do programa. Até logo!")
+                exit()
+        
+        # Input for encryption algorithm
+        encryp_algorithm = validate_encryp_algorithm()
+        
+
+        create_envelope(path_plain_text, private_key_remet, encryp_algorithm, user_dest)
+    elif choice == '3':
+        # abrir envelope 
+        print(" 3 ")
+        user_dest = input("Digite o nome do Usuario para entrar: ")
+        public_key_dest = f"./tmp/public/public_key_{user_dest}.pem"  # adiciona o caminho da chave publica
+        path_dest = f"./tmp/messages/{user_dest}"  # adiciona o caminho da pasta para depois verificar se ela existe
+
+        # Se a pasta path_dest existir, quero que liste os nomes das pastas dentro dela
+        if os.path.exists(path_dest):
+            print(f"Listando pastas dentro de {path_dest}:")
+            subfolders = [f.path for f in os.scandir(path_dest) if f.is_dir()]
+            if subfolders:
+                for folder in subfolders:
+                    print(os.path.basename(folder))
+            else:
+                print("Nenhuma pasta encontrada dentro de", path_dest)
+        else:
+            print(f"A pasta {path_dest} não existe.")
+        
+        user_remet = input("Digite o nome de um remetente valido " )       
+        encryp_algorithm = validate_encryp_algorithm() 
+        open_envelope( user_remet, user_dest,  encryp_algorithm)
+    elif choice == '4':
+        print("Saindo do programa. Até logo!")
+        exit()
+    else:
+        print("Opção inválida. Tente novamente.")
+        
