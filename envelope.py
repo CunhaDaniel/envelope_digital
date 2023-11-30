@@ -1,3 +1,16 @@
+# UNIVERSIDADE FEDERAL DO PIAUÍ
+# CENTRO DE CIÊNCIAS DA NATUREZA
+# DEPARTAMENTO DE COMPUTAÇÃO
+# PROFESSOR: Dr. CARLOS ANDRE BATISTA DE CARVALHO
+# Alunos: Daniel Mesquita Cunha
+#         Marcelo Eduardo Rufino de Oliveira
+#         Leonidas Pereira de Abreu
+
+# Para execução do programa:
+
+# 1. O arquivo message.txt na possui a mensagem a ser criptografada, caso deseje mudar é só apagar o que está
+# dentro do arquivo e adicionar uma nova mensagem 
+
 from Crypto.Util.Padding import pad, unpad
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
@@ -10,11 +23,6 @@ from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 import os
 
-# # Basic input infos
-# path_plain_text   = "message.txt" #input("Digite o caminho do arquivo em claro: ")
-# public_key_dest   = "./tmp/public/public_key_alice.pem" #input("Digite o caminho da chave pública do destinatário: ")
-# private_key_remet = "./tmp/secret/bob/private_key_bob.pem" #input("Digite o caminho da chave privada do remetente: ")
-# encryp_algorithm  = "RC4" #input("Digite o algoritmo disponíveis: [AES|DES|RC4]: ") # TODO: dizer tamanho da chave
 
 def validate_encryp_algorithm():
             # Input for encryption algorithm
@@ -46,14 +54,7 @@ def create_users_keys(user):
     file_key.close()
 
 
-# Basic input infos
 
-
-# This method create a user keys
-# @param[string] <user> represents who that keys will belongs
-# this method creates two files
-# private_key with path: ./tmp/secret/<user>/private_key_<user>.pem
-# public_key  with path: ./tmp/public/public_key_<user>.pem
 
 def create_envelope(path_plain_text, private_key_remet, encryp_algorithm, user_dest):
     data_plain_text = open(path_plain_text, "r").read().encode('utf-8')
@@ -181,7 +182,6 @@ def open_envelope( user_remet, user_dest,path_arq):
     except:
         print("Assinatura inválida.")
 
-# open_envelope(message, public_key_remet, private_key_dest, session_key, encryp_algorithm)
 
 while True:
     print("\nMenu:")
