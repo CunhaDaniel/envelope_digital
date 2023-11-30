@@ -151,15 +151,7 @@ def open_envelope( user_remet, user_dest,path_arq):
         session_key         = cipher_rsa.decrypt(open(session_key, 'rb').read())
     
         print("Resolvendo texto...")
-        # if (encryp_algorithm == 'AES'):
-        #     cipher    = AES.new(session_key, AES.MODE_ECB)
-        #     plaintext = unpad(cipher.decrypt(data), AES.block_size)
-        # elif (encryp_algorithm == 'DES'):
-        #     cipher    = DES.new(session_key, DES.MODE_ECB)
-        #     plaintext = unpad(cipher.decrypt(data), DES.block_size)
-        # elif (encryp_algorithm == 'RC4'):
-        #     cipher    = ARC4.new(session_key)
-        #     plaintext = cipher.decrypt(data)
+      
         algorithms = ['AES', 'DES', 'RC4']
 
         # Loop for para tentar cada algoritmo
@@ -170,18 +162,17 @@ def open_envelope( user_remet, user_dest,path_arq):
                 # Criar o objeto cipher de acordo com o algoritmo
                 if algorithm == 'AES':
                     cipher = AES.new(session_key, AES.MODE_ECB)
-                   
+                    plaintext = unpad(cipher.decrypt(data), cipher.block_size)
+                    break
                 elif algorithm == 'DES':
                     cipher = DES.new(session_key, DES.MODE_ECB)
-                    
+                    plaintext = unpad(cipher.decrypt(data), cipher.block_size)
+                    break
                 elif algorithm == 'RC4':
                     cipher = ARC4.new(session_key)
-                    
-                # Descriptografar os dados e remover o padding
-                plaintext = unpad(cipher.decrypt(data), cipher.block_size)
-                
-                # Imprimir o plaintext
-                print(f"Plaintext encontrado: {plaintext}")
+                    plaintext = cipher.decrypt(data)
+                    break
+               
             except:
                 # Se ocorrer um erro, imprimir uma mensagem de erro
                 print("...")
